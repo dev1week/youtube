@@ -4,7 +4,7 @@ import { FlatList } from "react-native";
 import { ListItemView } from "./ListItemView";
 import { useYoutubeData } from "./useYoutubeData";
 export const ListView: React.FC = ()=>{
-    const {data, loadData} = useYoutubeData(); 
+    const {data, loadData, loadMoreData} = useYoutubeData(); 
 
     useEffect(()=>{
         loadData(); 
@@ -16,7 +16,8 @@ export const ListView: React.FC = ()=>{
             renderItem={({item})=>
                 <ListItemView item={item}></ListItemView>
             }
-        
+            onEndReached={loadMoreData}
+            onEndReachedThreshold={0.1}
         />
     )
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { TypeListItem } from "./TypeListItem";
 import axios from "axios";
-import ApiKey  from "./API_KEY";
+
 
 
 const API_KEY ='';
@@ -81,9 +81,12 @@ type TypeVideoListResponse = {
 
 export const useYoutubeData = () =>{
     const [data, setData] = useState<TypeListItem[]> ([]);
-
+    
+    const [hasNextPage, setHasNextPage] = useState<boolean> (true); 
+    const [nextPageCursor, setNextPageCursor] = useState<string|null>(null); 
+    
     const loadData= useCallback(async () =>{
-       
+        
         try{
             const videoResults = await axiosInstance.get<TypeVideoListResponse>(
                 '/videos',{
@@ -106,14 +109,60 @@ export const useYoutubeData = () =>{
                         channelTitle:item.snippet.channelTitle
                      })),
                 );
+
+                setHasNextPage(typeof videoData.nextPageToken !== 'undefined');
+                setNextPageCursor(
+                    typeof videoData.nextPageToken !== 'undefined'
+                    ? videoData.nextPageToken
+                    : null, 
+                )
         }catch(ex){
             console.log(ex);
         }
     },[]);
     
+    const loadMoreData = useCallback(async()=>{
+        if(!hasNextPage) return; 
+        try{
+            const videoResults = await axiosInstance.get<TypeVideoListResponse>(
+                '/videos',{
+                    params:{
+                        key: API_KEY,
+                        part: 'snippet, contentDetails, statistics',
+                        chart: 'mostPopular',
+                        regionCode: 'KR',
+                        //무한 페이지 구현시 추가해야하는 파라미터 
+                        pageToken: nextPageCursor,
+                    }
+                }
+            )
+            const videoData = videoResults.data;
+            setData(prevData =>
+                prevData.concat(
+                    videoData.items.map(item=>(
+                        {
+                            title:item.snippet.title, 
+                            thumbnail:item.snippet.thumbnails.high.url, 
+                            publishedAt:item.snippet.publishedAt, 
+                            viewCount:item.statistics.viewCount,
+                            channelTitle:item.snippet.channelTitle
+                        })),
+                    )
+                );
 
+                setHasNextPage(typeof videoData.nextPageToken !== 'undefined');
+                setNextPageCursor(
+                    typeof videoData.nextPageToken !== 'undefined'
+                    ? videoData.nextPageToken
+                    : null, 
+                )
+        }catch(ex){
+
+        }
+    },[hasNextPage, nextPageCursor])
     return {
         data, 
-        loadData
+        loadData,
+        loadMoreData, 
     }
 }
